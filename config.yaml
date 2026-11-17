@@ -3,7 +3,7 @@
 
 glofas:
   system_version: "version_5_0"   # copy the exact string from the EWDS download form
-  start_year: 1979                # confirm v5 start (1979 or 1980)
+  start_year: 1980                # confirm v5 start (1979 or 1980)
   end_year: 2025                  # last full year of consolidated data
   area: [5.5, 33.5, -5.0, 42.5]   # N, W, S, E: Kenya plus a buffer
 
