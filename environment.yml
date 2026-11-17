@@ -1,0 +1,14 @@
+name: kenya-flood-eventset
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - xarray
+  - netcdf4
+  - pandas
+  - pyarrow
+  - numpy
+  - scipy
+  - matplotlib
+  - pyyaml
+  - cdsapi

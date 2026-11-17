@@ -1,0 +1,9 @@
+# Data and outputs are regenerated from code and are never pushed.
+# GloFAS raw files are large; any Fathom data is licensed and must stay off GitHub.
+data/
+results/
+figures/
+.DS_Store
+__pycache__/
+.Rhistory
+.RData

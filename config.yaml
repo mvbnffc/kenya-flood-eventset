@@ -1,0 +1,56 @@
+# All parameters and paths. Scripts read only from here.
+# Values marked "start" are starting points to tune.
+
+glofas:
+  system_version: "version_5_0"   # copy the exact string from the EWDS download form
+  start_year: 1979                # confirm v5 start (1979 or 1980)
+  end_year: 2025                  # last full year of consolidated data
+  area: [5.5, 33.5, -5.0, 42.5]   # N, W, S, E: Kenya plus a buffer
+
+sites:
+  min_upstream_area_km2: 1000     # start; also test 500
+  area_growth_for_new_site: 0.4   # start; new site when upstream area grows by 40%
+  max_sites: 80                   # small end-to-end run; null for the full run
+  required_sites: []              # [name, lon, lat] for hotspots, e.g. lower Nzoia
+  regulated: []                   # site_ids below dams (Seven Forks, Turkwel), filled after 02
+
+events:
+  trigger_clusters_per_year: 1.0  # start; sets each site's trigger quantile
+  merge_gap_days: 3               # start
+  pad_days: 10                    # start; set from travel-time lags in 04
+  max_length_days: 30             # start; stops a wet season becoming one event
+  lag_check_pairs: []             # [upstream_site_id, downstream_site_id] on Tana, Athi, Nzoia
+
+margins:
+  threshold_quantile: 0.8         # texmex mqu (start)
+  max_zero_share: 0.5             # drop sites with more zero event peaks than this
+
+dependence:
+  threshold_quantile: 0.8         # texmex dqu (start); mexAll uses mex() defaults: Laplace margins, constrain = TRUE
+
+simulation:
+  n_years: 1000                   # 10000 for v1
+  count_model: poisson            # or negbin if annual counts are overdispersed
+  seed: 20261117
+  mult: 10                        # mexMonteCarlo rejection multiple
+
+output:
+  rp_floor: 2                     # set to Fathom's lowest RP once confirmed
+
+files:
+  raw_discharge: data/raw/glofas_v5_{year}.nc
+  upstream_area: data/raw/glofas_v5_uparea.nc         # manual download, GloFAS auxiliary data
+  ldd: data/raw/glofas_v5_ldd.nc                      # manual download, GloFAS auxiliary data
+  rp_thresholds: data/raw/glofas_v5_rp_thresholds.nc  # manual download, used in 07
+  sites: data/interim/sites.parquet
+  site_qc: data/interim/site_qc.parquet
+  discharge: data/interim/discharge.parquet
+  events: data/interim/events.parquet
+  event_peaks: data/interim/event_peaks.parquet
+  mex_fit: results/mex_fit.rds
+  margins_params: results/margins_params.parquet
+  hist_probs: results/hist_probs.parquet
+  sim_probs: results/sim_probs.parquet
+  events_sim: results/events_sim.parquet
+  event_rp: results/event_rp.parquet
+  figures: figures
