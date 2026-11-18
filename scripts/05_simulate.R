@@ -4,6 +4,7 @@
 #         files.event_peaks, files.events, files.sites
 # Writes: files.mex_fit (fitted mexList, .rds),
 #         files.margins_params (site_id, threshold, sigma, xi, zero_share),
+#         files.dependence_params (cond_site, site_id, a, b): Heffernan-Tawn alpha and beta,
 #         files.hist_probs (event_id, site_id, p_event) for the historical events,
 #         files.sim_probs (event_id, sim_year, source, site_id, p_event),
 #         diagnostic PNGs in files.figures
@@ -67,6 +68,12 @@ fit <- mexAll(data, mqu = cfg$margins$threshold_quantile, dqu = rep(cfg$dependen
 cat("mexAll on", d, "sites and", nrow(data), "events:", format(Sys.time() - t0, digits = 3), "\n")
 dir.create(dirname(f$mex_fit), showWarnings = FALSE, recursive = TRUE)
 saveRDS(fit, f$mex_fit)
+dep <- do.call(rbind, lapply(fit, function(x) {
+  co <- coef(x$dependence)
+  data.frame(cond_site = as.integer(names(x$margins$data)[x$dependence$which]), site_id = as.integer(colnames(co)),
+             a = co["a", ], b = co["b", ])
+}))
+write_parquet(dep, f$dependence_params)
 
 m <- fit[[1]]$margins
 margins <- fit[[1]]$dependence$margins
