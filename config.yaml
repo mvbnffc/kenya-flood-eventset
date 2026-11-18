@@ -11,7 +11,12 @@ sites:
   min_upstream_area_km2: 1000     # start; also test 500
   area_growth_for_new_site: 0.4   # start; new site when upstream area grows by 40%
   max_sites: 80                   # small end-to-end run; null for the full run
-  required_sites: []              # [name, lon, lat] for hotspots, e.g. lower Nzoia
+  required_sites: 
+  - [budalangi_nzoia, 34.02, 0.13]
+  - [ahero_nyando, 34.92, -0.17]
+  - [garissa_tana, 39.65, -0.45]
+  - [hola_tana, 40.03, -1.50]
+  - [garsen_tana, 40.12, -2.27]              # [name, lon, lat] for hotspots, e.g. lower Nzoia
   regulated: []                   # site_ids below dams (Seven Forks, Turkwel), filled after 02
 
 events:
@@ -39,9 +44,10 @@ output:
 
 files:
   raw_discharge: data/raw/glofas_v5_{year}.nc
-  upstream_area: data/raw/glofas_v5_uparea.nc         # manual download, GloFAS auxiliary data
-  ldd: data/raw/glofas_v5_ldd.nc                      # manual download, GloFAS auxiliary data
-  rp_thresholds: data/raw/glofas_v5_rp_thresholds.nc  # manual download, used in 07
+  upstream_area: ddata/raw/upArea_repaired_correctedmetadata_3000.nc         # manual download, GloFAS auxiliary data
+  ldd: data/raw/ldd_repaired.nc                      # manual download, GloFAS auxiliary data
+  calibration_outlets: data/raw/outlets_calibratedstations.nc
+  rp_thresholds: null   # manual download, used in 07
   sites: data/interim/sites.parquet
   site_qc: data/interim/site_qc.parquet
   discharge: data/interim/discharge.parquet
