@@ -21,6 +21,10 @@ sites:
   - [omo_delta, 35.925, 4.475]    # flow almost all from Ethiopia, dam-regulated there
   excluded_radius_cells: 2
 
+qc:
+  zero_discharge_m3s: 0.01        # discharge below this counts as a zero day
+  trend_p: 0.05                   # print sites whose annual-maximum trend has p below this
+
 events:
   trigger_clusters_per_year: 1.0  # start; sets each site's trigger quantile
   merge_gap_days: 3               # start
