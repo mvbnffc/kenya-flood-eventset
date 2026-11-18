@@ -17,7 +17,9 @@ sites:
   - [garissa_tana, 39.65, -0.45]
   - [hola_tana, 40.03, -1.50]
   - [garsen_tana, 40.12, -2.27]              # [name, lon, lat] for hotspots, e.g. lower Nzoia
-  regulated: []                   # site_ids below dams (Seven Forks, Turkwel), filled after 02
+  excluded_sites:                 # [name, lon, lat]; sites near these points are dropped
+  - [omo_delta, 35.925, 4.475]    # flow almost all from Ethiopia, dam-regulated there
+  excluded_radius_cells: 2
 
 events:
   trigger_clusters_per_year: 1.0  # start; sets each site's trigger quantile
@@ -44,9 +46,12 @@ output:
 
 files:
   raw_discharge: data/raw/glofas_v5_{year}.nc
-  upstream_area: ddata/raw/upArea_repaired_correctedmetadata_3000.nc         # manual download, GloFAS auxiliary data
+  upstream_area: data/raw/upArea_repaired_correctedmetadata_3000.nc         # manual download, GloFAS auxiliary data
   ldd: data/raw/ldd_repaired.nc                      # manual download, GloFAS auxiliary data
   calibration_outlets: data/raw/outlets_calibratedstations.nc
+  lake_mask: data/raw/lakemask_Global_03min.nc
+  regulated_sites: data/raw/20260306_reservoirs_glofas5_03min_longtermrun_thresholdscomputation.nc
+  boundary: data/raw/geobounds_KEN.geojson
   rp_thresholds: null   # manual download, used in 07
   sites: data/interim/sites.parquet
   site_qc: data/interim/site_qc.parquet
