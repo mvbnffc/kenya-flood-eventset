@@ -24,13 +24,26 @@ sites:
 qc:
   zero_discharge_m3s: 0.01        # discharge below this counts as a zero day
   trend_p: 0.05                   # print sites whose annual-maximum trend has p below this
+  max_zero_share: 0.5             # 04 uses only sites with daily zero_share at or below this
 
 events:
   trigger_clusters_per_year: 1.0  # start; sets each site's trigger quantile
   merge_gap_days: 3               # start
-  pad_days: 10                    # start; set from travel-time lags in 04
-  max_length_days: 30             # start; stops a wet season becoming one event
-  lag_check_pairs: []             # [upstream_site_id, downstream_site_id] on Tana, Athi, Nzoia
+  pad_days: 3                     # set from lag check, 2026-11-18
+  split_above_days: 30            # start; longer windows are split at valleys if any exist, otherwise kept
+  lag_check_pairs:                # [upstream_site_id, downstream_site_id], checked on the LDD
+  - [28, 13]                      # Tana: Garissa -> Hola
+  - [13, 3]                       # Tana: Hola -> Garsen
+  - [47, 24]                      # Athi/Galana
+  - [66, 63]                      # Nzoia -> Budalangi
+  check_periods:                  # [label, first day, last day]; events overlapping these are printed
+  - [OND_1997, 1997-10-01, 1997-12-31]
+  - [MAM_1998, 1998-03-01, 1998-05-31]
+  - [OND_2019, 2019-10-01, 2019-12-31]
+  - [AM_2020, 2020-04-01, 2020-05-31]
+  - [OND_2023, 2023-10-01, 2023-12-31]
+  - [MAM_2024, 2024-03-01, 2024-05-31]
+  check_sites: [24, 47]           # printed with the required sites for check_periods (Athi)
 
 margins:
   threshold_quantile: 0.8         # texmex mqu (start)
@@ -41,7 +54,7 @@ dependence:
 
 simulation:
   n_years: 1000                   # 10000 for v1
-  count_model: poisson            # or negbin if annual counts are overdispersed
+  count_model: empirical          # resample historical annual event counts (Quinn et al. 2019)
   seed: 20261117
   mult: 10                        # mexMonteCarlo rejection multiple
 

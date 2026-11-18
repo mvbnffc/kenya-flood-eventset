@@ -17,9 +17,11 @@
 #   parallel::mclapply.
 # - Diagnostics for five representative conditioning sites: plot() of the mex fit,
 #   gpdRangeFit and mexRangeFit, saved as PNGs.
-# - Annual event counts: lambda = number of historical events / number of record years.
-#   Draw simulation.n_years counts with rpois (or a negative binomial if
-#   simulation.count_model is negbin).
+# - Annual event counts (simulation.count_model = empirical): count the historical
+#   events in each record year (zeros included), then draw simulation.n_years counts
+#   from those with replacement, as in Quinn et al. (2019). This keeps the clustering
+#   of events in wet years without fitting a count model. Stop if count_model is
+#   anything else.
 # - mexMonteCarlo(sum(counts), fit, mult = simulation.mult). Its MCsample is on
 #   the original discharge scale.
 # - Convert simulated and historical peaks to per-event non-exceedance probabilities

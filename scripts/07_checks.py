@@ -9,8 +9,12 @@ Writes: figures/check_1_marginals.png ... figures/check_5_glofas_thresholds.png,
 Checks:
 1. Marginals: at each site, the share of simulated years whose annual maximum RP
    is at least T should be about 1/T, for T = 2, 5, 10, 50.
-2. Dependence: extremal dependence chi at p = 0.9 and 0.95 against distance between
-   sites, historical vs simulated.
+2. Dependence: event co-occurrence rate, as in Wing et al. (2020) and Olcese et al.
+   (2022). For each pair of sites i, j: COR(T) = share of events with RP >= T at i
+   that also have RP >= T at j. Compute for T = 2 and 5, historical vs simulated,
+   plotted against distance between sites. Print the root-mean-square difference
+   (CORE) over all pairs and over pairs with simulated COR > 5%. Historical COR is
+   noisy with 46 years, so look for bias, not pair-by-pair agreement.
 3. Event extent: number of sites with RP >= 2, 5 and 10 per event and per year,
    historical vs simulated.
 4. Big years: where the 1997-98, 2019-20 and 2023-24 extents fall in the simulated
