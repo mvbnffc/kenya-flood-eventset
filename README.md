@@ -5,7 +5,7 @@ Stochastic river-flood event set for Kenya, built from GloFAS v5 daily discharge
 ## Setup
 
 1. `conda env create -f environment.yml`, then `conda activate kenya-flood-eventset`
-2. In R: `install.packages(c("texmex", "arrow", "yaml"))`
+2. In R: `install.packages(c("texmex", "arrow", "yaml"))`. Needs texmex 2.4.9 (uses internal mexTransform).
 3. Put your EWDS API key in `~/.cdsapirc` (see the "How to use the API" page on the Copernicus Early Warning Data Store).
 4. Download these into `data/raw/` by hand from the GloFAS v5 auxiliary data page: the upstream-area map, the flow-direction (LDD) map and the return-period threshold file. File names are set in `config.yaml`.
 
@@ -43,6 +43,7 @@ Static maps: LISFLOOD static and parameter maps for GloFAS (Choulga et al. 2023,
 - Dry sites: `qc.max_zero_share`; dry-site floodplain zones need a return period from a nearby modelled site or a rainfall-based method.
 - Event definition: trigger rate, merge gap, padding, and windows with no valley that stay longer than `split_above_days`. Test a fixed 9-day window (Quinn et al. 2019) as a sensitivity run through 04-07.
 - Margin and dependence thresholds (0.8 / 0.8): check threshold-stability plots in 05.
+- GPD shape: ξ < 0 at 22/50 sites gives hard upper limits (e.g. Ahero and site 76 only ~20% above the record maximum). Consider pooling ξ by region or constraining ξ ≥ 0; check the effect on the PML tail.
 - Seasonal model: fit MAM and OND separately if dependence differs.
 - Lower Athi/Galana: GloFAS dry-season zeros on a perennial river; check against WRA gauge data (Baricho).
 - Check 5 in 07 waits for GloFAS v5 return-period thresholds.

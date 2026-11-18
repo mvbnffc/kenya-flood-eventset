@@ -48,6 +48,7 @@ events:
 margins:
   threshold_quantile: 0.8         # texmex mqu (start)
   max_zero_share: 0.5             # drop sites with more zero event peaks than this
+  range_quantiles: [0.5, 0.9]     # threshold range for gpdRangeFit diagnostics only; not used in the fit
 
 dependence:
   threshold_quantile: 0.8         # texmex dqu (start); mexAll uses mex() defaults: Laplace margins, constrain = TRUE
@@ -56,7 +57,7 @@ simulation:
   n_years: 1000                   # 10000 for v1
   count_model: empirical          # resample historical annual event counts (Quinn et al. 2019)
   seed: 20261117
-  mult: 10                        # mexMonteCarlo rejection multiple
+  mult: 2                         # mexMonteCarlo rejection multiple; 500-event test 2026-11-18: mult 1 had 0 NA rows, +1
 
 output:
   rp_floor: 2                     # set to Fathom's lowest RP once confirmed
