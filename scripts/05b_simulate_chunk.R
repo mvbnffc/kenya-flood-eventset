@@ -2,7 +2,8 @@
 #
 # Usage:  Rscript scripts/05b_simulate_chunk.R <chunk_id>     (1 to n_chunks; 05a prints n_chunks)
 # Reads:  config.yaml, files.event_peaks (via 05_model.R, which refits the model)
-# Writes: files.chunks/chunk_NNNN.parquet (event_id, source, site_id, p_event)
+# Writes: <chunk_dir>/chunk_NNNN.parquet (event_id, source, site_id, p_event); chunk_dir is files.chunks
+#         with {seed} and {n_years} filled from simulation.*, so runs with other settings can't mix
 #
 # Method:
 # - Refit as in 05_model.R (no random numbers, so identical to 05a's fit).
@@ -40,8 +41,8 @@ if (any(!complete.cases(mc$MCsample))) stop(sum(!complete.cases(mc$MCsample)), "
 ids <- as.integer((id - 1) * sim$chunk_events + seq_len(n))
 out <- long(to_p(mc$MCsample, paste("chunk", id)), ids)
 out$source <- rep(ifelse(mc$whichMaxAboveThresh, "model", "resampled"), times = d)
-dir.create(f$chunks, showWarnings = FALSE, recursive = TRUE)
-path <- file.path(f$chunks, sprintf("chunk_%04d.parquet", id))
+dir.create(chunk_dir, showWarnings = FALSE, recursive = TRUE)
+path <- file.path(chunk_dir, sprintf("chunk_%04d.parquet", id))
 write_parquet(out[, c("event_id", "source", "site_id", "p_event")], path)
 g <- gc()
 cat(sprintf("chunk %d of %d: events %d-%d, %d from the model; mexMonteCarlo %.0f s (%.2f s per event, mult %d); R peak %.0f Mb; wrote %s\n",

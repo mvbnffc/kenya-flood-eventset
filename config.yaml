@@ -75,7 +75,7 @@ dependence:
   threshold_quantile: 0.8         # texmex dqu (start); mex() defaults otherwise: Laplace margins, constrain = TRUE
 
 simulation:
-  n_years: 1000                   # 10000 for v1
+  n_years: 10000                  # v1; 1000 for runs/full_1000
   count_model: empirical          # 06: resample historical years' event counts by class (Quinn et al. 2019)
   chunk_events: 200               # 05b: events per cluster chunk; the last chunk takes the remainder
   pool_factor: 1.3                # 05: pool = pool_factor x lambda x n_years events; r2 diagnostic needed 1.14
@@ -151,7 +151,7 @@ files:
   dependence_params: results/dependence_params.parquet
   hist_probs: results/hist_probs.parquet
   sim_probs: results/sim_probs.parquet
-  chunks: results/chunks           # 05b writes chunk_NNNN.parquet here; 05c combines them into sim_probs
+  chunks: results/chunks_s{seed}_y{n_years}   # 05b writes chunk_NNNN.parquet here, 05c combines them; {seed}, {n_years} from simulation, so runs can't mix
   events_sim: results/events_sim.parquet
   event_rp: results/event_rp.parquet
   figures: figures

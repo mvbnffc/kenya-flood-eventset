@@ -1,8 +1,9 @@
 """
 05c_combine.py: combine the cluster chunks into the simulated event pool.
 
-Reads:  config.yaml (glofas.*, simulation.n_years, simulation.pool_factor, simulation.chunk_events),
-        files.event_peaks, files.chunks/chunk_NNNN.parquet
+Reads:  config.yaml (glofas.*, simulation.n_years, simulation.pool_factor, simulation.chunk_events,
+        simulation.seed), files.event_peaks, <chunk_dir>/chunk_NNNN.parquet, where chunk_dir is
+        files.chunks with {seed} and {n_years} filled from simulation.* (as 05b writes them)
 Writes: files.sim_probs (event_id, source, site_id, p_event)
 
 Method:
@@ -27,8 +28,9 @@ n_events = len(pd.read_parquet(f["event_peaks"]))
 n_pool = round(sc["pool_factor"] * n_events / n_record * sc["n_years"])
 n_chunks = int(np.ceil(n_pool / sc["chunk_events"]))
 
-expected = {os.path.join(f["chunks"], f"chunk_{i:04d}.parquet") for i in range(1, n_chunks + 1)}
-found = set(glob.glob(os.path.join(f["chunks"], "chunk_*.parquet")))
+chunk_dir = f["chunks"].format(seed=sc["seed"], n_years=sc["n_years"])
+expected = {os.path.join(chunk_dir, f"chunk_{i:04d}.parquet") for i in range(1, n_chunks + 1)}
+found = set(glob.glob(os.path.join(chunk_dir, "chunk_*.parquet")))
 if expected - found:
     raise ValueError(f"{len(expected - found)} of {n_chunks} chunks missing, e.g. {sorted(expected - found)[:5]}")
 if found - expected:
@@ -48,5 +50,5 @@ n_sites = sim["site_id"].nunique()
 if (sim.groupby("event_id").size() != n_sites).any():
     raise ValueError(f"not every event has all {n_sites} sites")
 sim.to_parquet(f["sim_probs"], index=False)
-print(f"wrote {f['sim_probs']}: {n_pool} events x {n_sites} sites from {n_chunks} chunks, "
+print(f"wrote {f['sim_probs']}: {n_pool} events x {n_sites} sites from {n_chunks} chunks in {chunk_dir}, "
       f"{(sim.drop_duplicates('event_id')['source'] == 'model').sum()} from the model")

@@ -14,7 +14,7 @@
 #   range fails at Budalangi), and plot() and mexRangeFit of a fit to the required sites'
 #   columns only. Heffernan-Tawn dependence is fitted pair by pair, so that fit's alpha and
 #   beta equal the full fit's; print the largest difference, and stop above 1e-6.
-# - Print n_pool, the number of chunks n_chunks and the sbatch command for the cluster.
+# - Print n_pool, the number of chunks n_chunks, the sbatch command for the cluster and the chunk folder.
 
 source("scripts/05_model.R")
 
@@ -70,3 +70,4 @@ if (worst > 1e-6) stop("required-site fit differs from the full fit")
 cat("\npool:", n_pool, "events (pool_factor", sim$pool_factor, "x lambda x", sim$n_years, "years) in", n_chunks,
     "chunks of", sim$chunk_events, "\n")
 cat("on the cluster: sbatch --array=1-", n_chunks, "%100 cluster/run_chunks.sbatch\n", sep = "")
+cat("chunks go to", chunk_dir, "\n")

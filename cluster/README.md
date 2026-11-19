@@ -6,7 +6,7 @@ The cluster needs system R (`/usr/bin/Rscript`) with texmex 2.4.9, arrow, mvtnor
 
 ## On the PC, before the cluster run
 
-1. Run 02-04, then `Rscript scripts/05a_fit.R`. Its last line is the sbatch command with the chunk count N, e.g. `sbatch --array=1-38%100 cluster/run_chunks.sbatch`.
+1. Run 02-04, then `Rscript scripts/05a_fit.R`. Its last two lines are the sbatch command with the chunk count N (e.g. `sbatch --array=1-374%100 cluster/run_chunks.sbatch`) and the chunk folder, `results/chunks_s<seed>_y<n_years>` (from `files.chunks`), so runs with another seed or length can't mix.
 2. Commit and push the config and scripts the run should use (the cluster reads `config.yaml` from git).
 
 ## On the cluster
@@ -33,11 +33,11 @@ with N from step 1. Logs go to `cluster/logs/chunk_<chunk>_<job>.out` and `.err`
 
 ## Back on the PC
 
-Copy the chunks back (into `results/chunks/`) and combine them:
+Copy the chunk folder back (the one 05a printed, e.g. `results/chunks_s20261117_y10000`) and combine it:
 
 ```
 mkdir -p results
-scp -r CLUSTER:REPO/results/chunks results/
+scp -r CLUSTER:REPO/results/chunks_s20261117_y10000 results/
 python scripts/05c_combine.py
 python scripts/06_event_rp.py
 python scripts/07_checks.py

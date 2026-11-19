@@ -4,7 +4,8 @@
 # Reads:   config.yaml (glofas.*, qc.zero_discharge_m3s, margins.*, dependence.*, simulation.*),
 #          files.event_peaks
 # Defines: cfg, f, sim, peaks, data (event peaks of the kept sites), zero_share, d, prior, fit (mexList),
-#          m (fitted margins), margins (Laplace margins), params, limit, n_pool, n_chunks, to_p(), long()
+#          m (fitted margins), margins (Laplace margins), params, limit, n_pool, n_chunks, chunk_dir
+#          (files.chunks with {seed} and {n_years} filled from simulation.*), to_p(), long()
 #
 # Method:
 # - Stop if texmex is not 2.4.9.
@@ -65,6 +66,8 @@ limit <- ifelse(params$xi < 0, params$threshold - params$sigma / params$xi, Inf)
 
 n_pool <- round(sim$pool_factor * nrow(peaks) / (cfg$glofas$end_year - cfg$glofas$start_year + 1) * sim$n_years)
 n_chunks <- ceiling(n_pool / sim$chunk_events)
+chunk_dir <- gsub("{n_years}", sprintf("%d", as.integer(sim$n_years)),
+                  gsub("{seed}", sprintf("%d", as.integer(sim$seed)), f$chunks, fixed = TRUE), fixed = TRUE)
 
 ref <- m
 ref$transData <- lapply(seq_len(d), function(i) m$data[, i])
