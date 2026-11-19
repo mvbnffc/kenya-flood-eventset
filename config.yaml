@@ -65,7 +65,10 @@ dependence:
 
 simulation:
   n_years: 1000                   # 10000 for v1
-  count_model: empirical          # resample historical annual event counts (Quinn et al. 2019)
+  count_model: empirical          # 06: resample historical years' event counts by class (Quinn et al. 2019)
+  pool_factor: 1.3                # 05: pool = pool_factor x lambda x n_years events; r2 diagnostic needed 1.14
+  class_rp: 5                     # 06: event class by number of sites at RP >= class_rp
+  class_edges: [1, 5]             # 06: class lower edges; small 0, medium 1-4, large >= 5
   seed: 20261117
   mult: 2                         # mexMonteCarlo rejection multiple; 500-event test 2026-11-18: mult 1 had 0 NA rows, +1
 
@@ -79,7 +82,7 @@ checks:
   cor_min: 0.05                   # check 2: CORE also over pairs with simulated COR above this
   extent_T: [2, 5, 10]            # checks 3 and 4
   big_years: [1997, 1998, 2019, 2020, 2023, 2024]  # check 4, calendar years
-  profile_event: 1896             # check 6; widest simulated event (most sites RP >= 10, ties by summed RP); v0: 2884
+  profile_event: 4132             # check 6; widest simulated event (most sites RP >= 10, ties by summed RP); r2: 1896, v0: 2884
 
 files:
   raw_discharge: data/raw/glofas_v5_{year}.nc

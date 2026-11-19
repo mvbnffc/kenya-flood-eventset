@@ -6,7 +6,7 @@
 #         files.margins_params (site_id, threshold, sigma, xi, zero_share),
 #         files.dependence_params (cond_site, site_id, a, b): Heffernan-Tawn alpha and beta,
 #         files.hist_probs (event_id, site_id, p_event) for the historical events,
-#         files.sim_probs (event_id, sim_year, source, site_id, p_event),
+#         files.sim_probs (event_id, source, site_id, p_event) for the pool,
 #         diagnostic PNGs in files.figures
 #
 # Method:
@@ -23,17 +23,15 @@
 # - Diagnostics for the required sites as conditioning sites: plot() of the mex fit,
 #   gpdRangeFit (thresholds between the margins.range_quantiles quantiles; texmex's
 #   default 0.05-0.95 range fails at Budalangi) and mexRangeFit, saved as PNGs.
-# - Annual event counts (simulation.count_model = empirical): count the historical
-#   events in each record year (zeros included), then draw simulation.n_years counts
-#   from those with replacement, as in Quinn et al. (2019). This keeps the clustering
-#   of events in wet years without fitting a count model. Stop if count_model is
-#   anything else.
-# - mexMonteCarlo(sum(counts), fit, mult = simulation.mult). Its MCsample is on
-#   the original discharge scale. It asks predict() for sum(counts) * d * mult
-#   samples per conditioning site, so run time scales with mult; simulation.mult is
-#   the lowest value with no NA rows in a 500-event test, plus one. Stop on NA rows
-#   (too few kept samples). For the 10,000-year run, parallel chunks of years with
-#   parallel::parLapply and clusterSetRNGStream are planned (not written yet).
+# - Pool size n_pool = round(simulation.pool_factor * lambda * simulation.n_years), with
+#   lambda = historical events per record year. The pool has no years: 06 assembles
+#   years from it by event class.
+# - mexMonteCarlo(n_pool, fit, mult = simulation.mult). Its MCsample is on the original
+#   discharge scale. It asks predict() for n_pool * d * mult samples per conditioning
+#   site, so run time scales with mult; simulation.mult is the lowest value with no NA
+#   rows in a 500-event test, plus one. Stop on NA rows (too few kept samples). For the
+#   10,000-year run, parallel chunks of the pool with parallel::parLapply and
+#   clusterSetRNGStream are planned (not written yet).
 # - Convert simulated and historical peaks to per-event non-exceedance probabilities
 #   p_event with mexTransform (the transform mexMonteCarlo itself uses), then Laplace
 #   to uniform with the fit's q2p: p = 0.5 * exp(y) if y < 0, else 1 - 0.5 * exp(-y).
@@ -42,7 +40,6 @@
 #   above a site's GPD upper limit silently corrupts that site's whole column, so
 #   stop if any value is above its limit. Stop if texmex is not 2.4.9.
 # - source = "model" where whichMaxAboveThresh is TRUE, else "resampled".
-# - Assign simulated events to years in order using the counts.
 
 library(texmex)
 library(arrow)
@@ -52,7 +49,6 @@ cfg <- read_yaml("config.yaml")
 f <- cfg$files
 sim <- cfg$simulation
 if (packageVersion("texmex") != "2.4.9") stop("texmex ", packageVersion("texmex"), " installed; 05 is written for 2.4.9")
-if (sim$count_model != "empirical") stop("simulation.count_model must be empirical, not ", sim$count_model)
 
 peaks <- as.data.frame(read_parquet(f$event_peaks))
 events <- as.data.frame(read_parquet(f$events))
@@ -119,16 +115,13 @@ for (k in seq_len(nrow(required))) {
   cat("diagnostics for", required$name[k], "written to", paste0(stem, "_*.png"), "\n")
 }
 
-# Annual counts, resampled from the historical record years.
-years <- cfg$glofas$start_year:cfg$glofas$end_year
-annual <- as.vector(table(factor(as.integer(format(events$start, "%Y", tz = "UTC")), levels = years)))
+# Event pool, without years.
+n_pool <- round(sim$pool_factor * nrow(events) / (cfg$glofas$end_year - cfg$glofas$start_year + 1) * sim$n_years)
+cat("\npool:", n_pool, "events (pool_factor", sim$pool_factor, "x lambda x", sim$n_years, "years)\n")
 set.seed(cfg$simulation$seed)  # here, not at the top: mexRangeFit's bootstrap uses the RNG
-counts <- sample(annual, sim$n_years, replace = TRUE)
-cat("\nlambda =", nrow(events), "events /", length(years), "years =", round(nrow(events) / length(years), 2),
-    "; historical annual counts", min(annual), "to", max(annual), "; simulated events", sum(counts), "\n")
 
 t0 <- Sys.time()
-mc <- mexMonteCarlo(sum(counts), fit, mult = sim$mult)
+mc <- mexMonteCarlo(n_pool, fit, mult = sim$mult)
 cat("mexMonteCarlo:", format(Sys.time() - t0, digits = 3), "\n")
 if (any(!complete.cases(mc$MCsample))) stop(sum(!complete.cases(mc$MCsample)), " NA rows in MCsample; raise simulation.mult")
 
@@ -150,10 +143,8 @@ long <- function(p, ids) data.frame(event_id = rep(ids, times = d), site_id = re
 
 hist <- long(to_p(data, "historical"), events$event_id)
 write_parquet(hist, f$hist_probs)
-n_sim <- sum(counts)
-p_sim <- long(to_p(mc$MCsample, "simulated"), seq_len(n_sim))
-p_sim$sim_year <- rep(rep(seq_len(sim$n_years), counts), times = d)
+p_sim <- long(to_p(mc$MCsample, "simulated"), seq_len(n_pool))
 p_sim$source <- rep(ifelse(mc$whichMaxAboveThresh, "model", "resampled"), times = d)
-write_parquet(p_sim[, c("event_id", "sim_year", "source", "site_id", "p_event")], f$sim_probs)
+write_parquet(p_sim[, c("event_id", "source", "site_id", "p_event")], f$sim_probs)
 cat("wrote", f$hist_probs, "(", nrow(hist), "rows ) and", f$sim_probs, "(", nrow(p_sim), "rows ):",
-    n_sim, "simulated events in", sim$n_years, "years,", sum(mc$whichMaxAboveThresh), "from the model\n")
+    n_pool, "pool events,", sum(mc$whichMaxAboveThresh), "from the model\n")

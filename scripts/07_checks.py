@@ -10,7 +10,7 @@ Writes: figures/check_1_marginals.png ... figures/check_6_event_profile.png
         per check
 
 This checks the delivered event_rp: simulated rp_years are read from files.event_rp
-(after 06's rank remap), with sim_year from files.events_sim. Event-site pairs missing
+(after 06's assembly and re-ranking), with their sim_year. Event-site pairs missing
 from event_rp are below output.rp_floor and count as rp_years 0, below every T; stop
 if any T in checks.* is below output.rp_floor. Historical RP uses 06's formula:
 rp_years = 1 / (1 - exp(-lambda * (1 - p_event))), lambda = historical events per record year.
@@ -22,7 +22,9 @@ Checks:
    q = -ln(1 - 1/T) / lambda is the per-event probability of RP >= T. Counts are
    overdispersed, so this is below 1/T at small T; 1/T is drawn as a reference line
    only. Print the per-site ratio of simulated to expected share for T in
-   checks.ratio_T, sorted by the ratio at the second T.
+   checks.ratio_T, sorted by the ratio at the second T, and its median, range and
+   pooled value (all site-years). The expected share assumes independent events within
+   a year, so the historical record's own ratio, printed alongside, is the reference.
 2. Dependence: event co-occurrence rate, as in Wing et al. (2020) and Olcese et al.
    (2022). For each pair of sites i, j: COR(T) = share of events with RP >= T at i
    that also have RP >= T at j. Compute for T in checks.cor_T, historical vs
@@ -94,8 +96,7 @@ check_T = ck["marginal_T"] + ck["ratio_T"] + ck["cor_T"] + ck["extent_T"]
 if min(check_T) < cfg["output"]["rp_floor"]:
     raise ValueError(f"check T = {min(check_T)} is below output.rp_floor = {cfg['output']['rp_floor']}")
 events_sim = pd.read_parquet(f["events_sim"])
-sim = pd.read_parquet(f["event_rp"]).merge(events_sim[["event_id", "sim_year"]], on="event_id")
-sim = sim.rename(columns={"sim_year": "year"})
+sim = pd.read_parquet(f["event_rp"]).rename(columns={"sim_year": "year"})
 site_ids = np.sort(sim["site_id"].unique())
 if not np.array_equal(np.sort(hist["site_id"].unique()), site_ids):
     raise ValueError("hist_probs and event_rp have different sites")
@@ -127,9 +128,10 @@ ratio.insert(0, "name", sites["name"])
 print("\nCheck 1: simulated / expected share of years with annual max RP >= T; expected years in "
       f"{len(sim_years)}: " + ", ".join(f"T={T}: {expected(T) * len(sim_years):.0f}" for T in ck["ratio_T"]))
 print(ratio.sort_values(f"ratio_{ck['ratio_T'][1]}").round(2).to_string())
-print("check 1 summary: median ratio " + ", ".join(
-    f"T={T} {ratio[f'ratio_{T}'].median():.2f} ({ratio[f'ratio_{T}'].min():.2f}-{ratio[f'ratio_{T}'].max():.2f})"
-    for T in ck["ratio_T"]))
+for label, amax in (("simulated", amax_s), ("historical record (reference)", amax_h)):
+    print(f"check 1 summary, {label}: median (range) / pooled ratio " + ", ".join(
+        f"T={T} {r.median():.2f} ({r.min():.2f}-{r.max():.2f}) / {(amax >= T).values.sum() / (amax.size * expected(T)):.2f}"
+        for T in ck["ratio_T"] for r in [(amax >= T).mean() / expected(T)]))
 
 # Check 2: co-occurrence rate against distance.
 lon, lat = sites["lon"].values, sites["lat"].values
