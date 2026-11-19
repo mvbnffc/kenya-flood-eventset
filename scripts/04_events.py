@@ -35,6 +35,9 @@ Method:
   their peaks at the required sites and events.check_sites.
 - For each pair in events.lag_check_pairs, print the lag (days) of peak
   cross-correlation; pad_days should be at least the largest lag.
+- Check points (events.check_sites, events.lag_check_pairs) are a required-site name,
+  or [label, lon, lat] snapped to the nearest modelled site; stop if that is more than
+  events.check_snap_cells grid cells away. Print each snap.
 """
 import os
 
@@ -52,6 +55,24 @@ def runs(above):
     idx = np.flatnonzero(above)
     breaks = np.flatnonzero(np.diff(idx) > gap)
     return idx[np.r_[0, breaks + 1]], idx[np.r_[breaks, len(idx) - 1]]
+
+
+def snap(point):
+    """(site_id, label) for a check point: a required-site name, or [label, lon, lat] snapped to the nearest
+    modelled site; stop if that is more than events.check_snap_cells grid cells away."""
+    if isinstance(point, str):
+        hit = sites.loc[sites["name"] == point, "site_id"]
+        if len(hit) != 1:
+            raise ValueError(f"check point {point}: not a modelled required site")
+        return int(hit.iloc[0]), point
+    label, x, y = point
+    cell = np.ptp(sites["lon"]) / np.ptp(sites["col"])
+    d = np.hypot(sites["lon"] - x, sites["lat"] - y) / cell
+    k = d.idxmin()
+    if d[k] > ev["check_snap_cells"]:
+        raise ValueError(f"check point {label} ({x}, {y}): nearest modelled site is {d[k]:.1f} cells away")
+    print(f"  {label} ({x}, {y}) -> site {sites['site_id'][k]} at {sites['lon'][k]}, {sites['lat'][k]} ({d[k]:.1f} cells)")
+    return int(sites["site_id"][k]), label
 
 
 dis = pd.read_parquet(f["discharge"])
@@ -160,8 +181,10 @@ print(long[["event_id", "start", "end", "n_days", "n_sites_triggered"]].to_strin
 print("\nTen events with the most sites triggered:")
 print(events.sort_values(["n_sites_triggered", "start"], ascending=[False, True]).head(10).to_string(index=False))
 
-shown = sites[(sites["name"] != "") | sites["site_id"].isin(ev["check_sites"])]
-labels = {str(i): n or str(i) for i, n in zip(shown["site_id"], shown["name"])}
+print("\nCheck points (events.check_sites, events.lag_check_pairs) snapped to modelled sites:")
+checks = dict(snap(p) for p in ev["check_sites"])
+shown = sites[(sites["name"] != "") | sites["site_id"].isin(checks)]
+labels = {str(i): n or checks[i] for i, n in zip(shown["site_id"], shown["name"])}
 for label, first, last in ev["check_periods"]:
     sel = (events["start"] <= pd.Timestamp(last)) & (events["end"] >= pd.Timestamp(first))
     table = events[sel][["event_id", "start", "end", "n_sites_triggered"]].merge(
@@ -169,8 +192,9 @@ for label, first, last in ev["check_periods"]:
     print(f"\n{label} ({first} to {last}): peak discharge (m3/s)")
     print(table.to_string(index=False) if len(table) else "  no events")
 
+pairs = [(snap(a), snap(b)) for a, b in ev["lag_check_pairs"]]
 print(f"\nLag of peak cross-correlation (pad_days = {pad}):")
-for up, down in ev["lag_check_pairs"]:
+for (up, up_label), (down, down_label) in pairs:
     x, y = dis[str(up)], dis[str(down)]
     corr = [y.corr(x.shift(lag)) for lag in range(split_above + 1)]
-    print(f"  {up} -> {down}: {int(np.argmax(corr))} days (r = {max(corr):.3f})")
+    print(f"  {up_label} ({up}) -> {down_label} ({down}): {int(np.argmax(corr))} days (r = {max(corr):.3f})")

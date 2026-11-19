@@ -23,7 +23,7 @@ python scripts/06_event_rp.py
 python scripts/07_checks.py
 ```
 
-All parameters are in `config.yaml`. The default config runs the small end-to-end version (80 sites, 1,000 years).
+All parameters are in `config.yaml`. The default config runs the full site network (93 modelled sites) for 1,000 years; the small end-to-end runs r1–r4 used `max_sites: 80` (45 modelled sites).
 
 ## Data
 

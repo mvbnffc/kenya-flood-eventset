@@ -18,10 +18,11 @@ Method:
   assembled event set, so per-event margins hold by construction.
 - Event class: the number of sites with rp_years >= simulation.class_rp, binned by the
   lower edges simulation.class_edges (class k = number of edges <= n; 0 small, 1 medium,
-  2 large for [1, 5]). Event region: the region (simulation.regions, by outlet) with the
-  most sites at rp_years >= class_rp; for ties, and small events, the tied region
-  holding the event's highest-RP site (rank ties broken by p_event_raw). Stop unless
-  every site is in exactly one region. Historical events use their hist_probs p_event
+  2 large for [1, 5]). Site region: simulation.regions maps each site's outlet_id
+  (files.sites) to a region; stop if a modelled site's outlet is not mapped. Event
+  region: the region with the most sites at rp_years >= class_rp; for ties, and small
+  events, the tied region holding the event's highest-RP site (rank ties broken by
+  p_event_raw). Historical events use their hist_probs p_event
   and the same rp_years formula; pool events use the pool ranks.
 - Assembly (simulation.count_model = empirical; stop otherwise): for each of the
   simulation.n_years years, resample one record year (zeros included) with replacement
@@ -61,7 +62,9 @@ years = np.arange(cfg["glofas"]["start_year"], cfg["glofas"]["end_year"] + 1)
 n_years = sc["n_years"]
 if sc["count_model"] != "empirical":
     raise ValueError(f"simulation.count_model must be empirical, not {sc['count_model']}")
-site_region = pd.Series({s: r for r, ids in sc["regions"].items() for s in ids})
+outlet = pd.read_parquet(f["sites"]).set_index("site_id")["outlet_id"]
+site_region = outlet.map(sc["regions"])
+regions = list(dict.fromkeys(sc["regions"].values()))
 
 
 def to_rp(p):
@@ -97,8 +100,10 @@ if not pool["p_event_raw"].between(0, 1, inclusive="neither").all():
 n_pool = pool["event_id"].nunique()
 if (pool.groupby("site_id").size() != n_pool).any():
     raise ValueError(f"not every site has all {n_pool} pool events")
-if site_region.index.duplicated().any() or set(site_region.index) != set(pool["site_id"]):
-    raise ValueError("simulation.regions must list every modelled site exactly once")
+missing = site_region.reindex(pool["site_id"].unique()).isna()
+if missing.any():
+    raise ValueError(f"simulation.regions has no region for the outlet of sites {list(missing.index[missing])}: "
+                     f"outlet_ids {sorted(outlet[missing.index[missing]].unique())}")
 pool["rp_years"] = to_rp(rank_p(pool))
 pool_cell = event_cell(pool)
 
@@ -106,7 +111,7 @@ hist = pd.read_parquet(f["hist_probs"]).rename(columns={"p_event": "p_event_raw"
 hist["rp_years"] = to_rp(hist["p_event_raw"])
 hist_cell = event_cell(hist)
 classes = np.arange(len(sc["class_edges"]) + 1)
-cells = pd.MultiIndex.from_product([classes, list(sc["regions"])], names=["event_class", "region"])
+cells = pd.MultiIndex.from_product([classes, regions], names=["event_class", "region"])
 year = events.set_index("event_id").loc[hist_cell.index, "start"].dt.year
 year_counts = (pd.crosstab(year, [hist_cell["event_class"], hist_cell["region"]])
                .reindex(index=years, columns=cells, fill_value=0))

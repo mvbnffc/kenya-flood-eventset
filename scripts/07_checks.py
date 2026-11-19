@@ -40,7 +40,8 @@ Checks:
    GloFAS v5 threshold file. v5 thresholds include trend adjustments, so expect
    differences where site_qc shows a trend. Skipped while files.rp_thresholds is
    null; stops if it is set, as the check is not written yet.
-6. Event profile: for simulated event checks.profile_event (must be a model event),
+6. Event profile: for the widest delivered model event (most sites with RP >= 10,
+   ties by summed rp_years over event_rp),
    the conditioning site (the site with the highest p_event in sim_probs, before
    06's remap, as mexMonteCarlo keeps only draws where the conditioning site is
    largest), a map of rp_years at all sites (hollow below output.rp_floor), and Heffernan-Tawn alpha and beta from the conditioning site to every
@@ -203,10 +204,10 @@ if f["rp_thresholds"] is not None:
 print("\nCheck 5 skipped: files.rp_thresholds is null")
 
 # Check 6: profile of one simulated event.
-e = ck["profile_event"]
+model = events_sim.loc[events_sim["source"] == "model", ["event_id", "n_sites_rp_ge_10"]]
+model["sum_rp"] = ev_s.loc[model["event_id"]].sum(axis=1).to_numpy()
+e = model.sort_values(["n_sites_rp_ge_10", "sum_rp"], ascending=False)["event_id"].iloc[0]
 info = events_sim.set_index("event_id").loc[e]
-if info["source"] != "model":
-    raise ValueError(f"event {e} is {info['source']}, so it has no conditioning site")
 r = ev_s.loc[e]
 raw = pd.read_parquet(f["sim_probs"])
 cond = raw.loc[raw["event_id"] == e].set_index("site_id")["p_event"].idxmax()

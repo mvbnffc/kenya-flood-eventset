@@ -10,9 +10,12 @@ Method:
 - Candidate cells: upstream area >= sites.min_upstream_area_km2, inside Kenya,
   not a lake cell (lake mask == 1).
 - Use the flow-direction (LDD) map to follow each river downstream. Place a site
-  at each confluence of two candidate rivers, wherever upstream area has grown by
+  at each confluence of two candidate rivers where the tributary (the second-largest
+  inflow) has at least sites.confluence_min_share of the main stem's (largest
+  inflow's) upstream area, wherever upstream area has grown by
   sites.area_growth_for_new_site since the last site, and at each river's last
-  candidate cell: no candidate cell anywhere further downstream. A river that
+  candidate cell: no candidate cell anywhere further downstream. Below a confluence
+  without a site, growth is measured from the main stem's last site. A river that
   crosses the border several times gets one exit site, where it leaves Kenya for
   the last time; a river entering a lake ends at the shore.
 - Drop every site within sites.excluded_radius_cells of a point in
@@ -111,20 +114,33 @@ last = cand & ~down_cand
 crossings = last.sum()
 for i in np.flatnonzero(last):
     last[i] = not cand[downstream(i)[1:]].any()
+inflows = np.flatnonzero(cand & has_down)
+inflows = inflows[confluence[down[inflows]]]
+main, second = {}, {}
+for i in inflows[np.argsort(up[inflows])]:  # ascending, so main ends as the largest inflow
+    j = down[i]
+    if j in main:
+        second[j] = main[j]
+    main[j] = i
+major = np.zeros(nr * nc, bool)
+for j in main:
+    major[j] = up[second[j]] >= s["confluence_min_share"] * up[main[j]]
+print(f"{confluence.sum()} confluences, {major.sum()} with a tributary >= {s['confluence_min_share']} "
+      "of the main stem")
 print(f"{cand.sum()} candidate cells, {confluence.sum()} confluences, {last.sum()} last cells "
       f"({crossings - last.sum()} earlier border crossings dropped)")
 
 # Walk downstream. ref = upstream area at the last site above the cell; a river's
 # first candidate cell is its starting reference. Sorting by upstream area visits
 # every cell after all the cells that drain into it.
-site = confluence | last
+site = major | last
 ref = up.copy()
 growth = 1 + s["area_growth_for_new_site"]
 for i in np.flatnonzero(cand)[np.argsort(up[cand])]:
     if up[i] >= growth * ref[i]:
         site[i] = True
     j = down[i]
-    if j >= 0 and cand[j] and n_in[j] == 1:
+    if j >= 0 and cand[j] and (n_in[j] == 1 or (not major[j] and main[j] == i)):
         ref[j] = up[i] if site[i] else ref[i]
 print(f"{site.sum()} sites from the river network")
 

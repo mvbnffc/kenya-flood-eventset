@@ -9,8 +9,9 @@ glofas:
 
 sites:
   min_upstream_area_km2: 1000     # start; also test 500
-  area_growth_for_new_site: 0.4   # new site when upstream area grows by 40%; full run: 0.7 proposed (runs/full_tuning)
-  max_sites: 80                   # small end-to-end run; null for the full run
+  area_growth_for_new_site: 0.7   # new site when upstream area grows by 70%; 0.4 in r1-r4 (runs/full_tuning)
+  confluence_min_share: 0.15      # confluence site only if the tributary has >= this share of the main stem's area (start)
+  max_sites: null                 # full network; 80 for the small end-to-end runs r1-r4
   required_sites: 
   - [budalangi_nzoia, 34.02, 0.13]
   - [ahero_nyando, 34.92, -0.17]
@@ -20,9 +21,8 @@ sites:
   excluded_sites:                 # [name, lon, lat]; sites near these points are dropped
   - [omo_delta, 35.925, 4.475]    # flow almost all from Ethiopia, dam-regulated there
   # Ewaso Ng'iro (North) below the Lorian Swamp: transmission-loss reach where GloFAS flow does
-  # not grow with upstream area; unreliable for flood statistics; low exposure. (v0 sites 7, 6, 4)
+  # not grow with upstream area; unreliable for flood statistics; low exposure. (v0 sites 7, 6, 4; a third point, 40.425, 0.175, has no site under confluence_min_share)
   - [ewaso_below_lorian_1, 40.275, 0.225]
-  - [ewaso_below_lorian_2, 40.425, 0.175]
   - [ewaso_below_lorian_3, 40.975, 0.475]
   excluded_radius_cells: 2
 
@@ -33,16 +33,19 @@ qc:
   min_mean_flow_m3s: 2            # 04 also drops sites with mean daily flow below this; 5 drops perennial coastal basins
 
 events:
-  trigger_clusters_per_year: 1.0  # sets each site's trigger quantile; full run: 0.5 proposed (runs/full_tuning)
+  trigger_clusters_per_year: 0.5  # sets each site's trigger quantile; 1.0 in r1-r4 (runs/full_tuning)
   trigger_quantile_floor: 0.95    # trigger is at least this daily quantile (start)
   merge_gap_days: 3               # start
   pad_days: 3                     # set from lag check, 2026-11-18
   split_above_days: 30            # start; longer windows are split at valleys if any exist, otherwise kept
-  lag_check_pairs:                # [upstream_site_id, downstream_site_id], checked on the LDD
-  - [25, 10]                      # Tana: Garissa -> Hola (v0 ids 28, 13)
-  - [10, 3]                       # Tana: Hola -> Garsen (v0 ids 13, 3)
-  - [44, 21]                      # Athi/Galana (v0 ids 47, 24)
-  - [63, 60]                      # Nzoia -> Budalangi (v0 ids 66, 63)
+  # Check points: a required-site name, or [label, lon, lat] snapped to the nearest modelled site
+  # (stop if further than check_snap_cells grid cells).
+  check_snap_cells: 2
+  lag_check_pairs:                # [upstream, downstream] check points
+  - [garissa_tana, hola_tana]
+  - [hola_tana, garsen_tana]
+  - [[athi_upper, 37.975, -2.125], [galana_lower, 40.125, -3.175]]       # r4 ids 44, 21
+  - [[nzoia_upstream, 34.825, 0.675], budalangi_nzoia]                   # next main-stem site; r4 id 63 (34.225, 0.175) is gone
   check_periods:                  # [label, first day, last day]; events overlapping these are printed
   - [OND_1997, 1997-10-01, 1997-12-31]
   - [MAM_1998, 1998-03-01, 1998-05-31]
@@ -50,7 +53,9 @@ events:
   - [AM_2020, 2020-04-01, 2020-05-31]
   - [OND_2023, 2023-10-01, 2023-12-31]
   - [MAM_2024, 2024-03-01, 2024-05-31]
-  check_sites: [21, 44]           # printed with the required sites for check_periods (Athi; v0 ids 24, 47)
+  check_sites:                    # check points printed with the required sites for check_periods
+  - [galana_lower, 40.125, -3.175]   # r4 id 21
+  - [athi_upper, 37.975, -2.125]     # r4 id 44
 
 margins:
   threshold_quantile: 0.8         # texmex mqu (start)
@@ -72,13 +77,42 @@ simulation:
   class_rp: 5                     # 06: event class by number of sites at RP >= class_rp
   class_edges: [1, 5]             # 06: class lower edges; small 0, medium 1-4, large >= 5
   region_persistence: 0.8         # 06: chance a drawn event matches the historical event's region, not just its class; start
-  regions:                        # 06: site_ids by outlet, from the LDD; every modelled site exactly once
-    lake_victoria: [59, 60, 63, 199]
-    turkana_rift: [39, 40, 45, 55, 58, 68, 76]          # Lake Turkana; Ewaso Ng'iro South (Natron) would go here
-    tana_ewaso: [1, 2, 3, 4, 5, 10, 12, 17, 20, 25, 30, 32, 37, 49, 54, 56, 78,   # Tana
-                 6, 7, 8, 18, 35, 51, 64,              # Ewaso Ng'iro (North) above the Lorian Swamp
-                 9, 11, 13, 14]                         # Daua (to the Juba), by proximity
-    athi_coast: [21, 22, 23, 26, 44, 74]               # Athi/Galana/Sabaki
+  regions:                        # 06: outlet_id (02's LDD cell index of the basin end) -> region; every modelled site's outlet
+    # lake_victoria: rivers into Lake Victoria
+    20160: lake_victoria          # Nzoia (Budalangi)
+    21600: lake_victoria          # Nyando (Ahero)
+    22320: lake_victoria          # outlet 33.525, -0.725; largest site 34.175, -0.925
+    15480: lake_victoria          # outlet 33.525, 1.175; largest site 34.175, 0.575
+    24660: lake_victoria          # Mara, via Tanzania
+    # turkana_rift: Lake Turkana and endorheic Rift basins
+    6170: turkana_rift            # Lake Turkana from the south-west
+    10: turkana_rift              # north-west, outlet 34.025, 5.475 (dry)
+    2585: turkana_rift            # north, outlet 36.775, 4.775 (dry)
+    10163: turkana_rift           # Chalbi (dry)
+    11761: turkana_rift           # Suguta valley, outlet 36.575, 2.225
+    17691: turkana_rift           # Lake Baringo, outlet 36.075, 0.575
+    22556: turkana_rift           # Lake Naivasha, outlet 36.325, -0.775
+    28849: turkana_rift           # Ewaso Ng'iro South (Lake Natron)
+    26515: turkana_rift           # south Rift, outlet 36.275, -1.875
+    27774: turkana_rift           # south Rift, outlet 36.225, -2.225
+    26698: turkana_rift           # pit at 36.425, -1.925, south of Nairobi
+    # tana_ewaso: Tana, Ewaso Ng'iro (North) and the north-east
+    29116: tana_ewaso             # Tana
+    19799: tana_ewaso             # Ewaso Ng'iro (North), to the Lorian Swamp and Somalia
+    5759: tana_ewaso              # Daua, to the Juba
+    23569: tana_ewaso             # north-east, to Somalia, largest site 40.975, -0.775 (dry)
+    # athi_coast: Athi/Galana and the coast
+    31272: athi_coast             # Athi/Galana/Sabaki
+    29233: athi_coast             # pit at 37.175, -2.625
+    37712: athi_coast             # near Taveta, to Tanzania
+    36474: athi_coast             # south coast, outlet 39.225, -4.625
+    36297: athi_coast             # south coast, outlet 39.375, -4.575
+    34503: athi_coast             # Mwache, Mombasa/Kwale
+    32887: athi_coast             # coast, outlet 39.875, -3.625
+    28045: athi_coast             # Lamu area, outlet 40.775, -2.275
+    26967: athi_coast             # Lamu area, outlet 40.875, -1.975
+    26969: athi_coast             # Lamu area, outlet 40.975, -1.975
+    24286: athi_coast             # Lamu hinterland, to Somalia, outlet 41.825, -1.225
   seed: 20261117
   mult: 2                         # mexMonteCarlo rejection multiple; 500-event test 2026-11-18: mult 1 had 0 NA rows, +1
 
@@ -93,7 +127,6 @@ checks:
   extent_T: [2, 5, 10]            # checks 3 and 4
   repeat_T: 2                     # check 7: site-years with RP >= repeat_T in two or more events
   big_years: [1997, 1998, 2019, 2020, 2023, 2024]  # check 4, calendar years
-  profile_event: 4804             # check 6; widest simulated event (most sites RP >= 10, ties by summed RP); r3: 4132, r2: 1896, v0: 2884
 
 files:
   raw_discharge: data/raw/glofas_v5_{year}.nc
