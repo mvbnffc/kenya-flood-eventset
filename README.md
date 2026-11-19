@@ -43,7 +43,7 @@ Static maps: LISFLOOD static and parameter maps for GloFAS (Choulga et al. 2023,
 - Dry sites: `qc.max_zero_share`; dry-site floodplain zones need a return period from a nearby modelled site or a rainfall-based method.
 - Event definition: trigger rate, merge gap, padding, and windows with no valley that stay longer than `split_above_days`. Test a fixed 9-day window (Quinn et al. 2019) as a sensitivity run through 04-07.
 - Margin and dependence thresholds (0.8 / 0.8): check threshold-stability plots in 05.
-- GPD shape: ξ < 0 at 22/50 sites gives hard upper limits (e.g. Ahero and site 76 only ~20% above the record maximum). Consider pooling ξ by region or constraining ξ ≥ 0; check the effect on the PML tail.
+- GPD shape: ξ < 0 at 20/45 sites gives hard upper limits (e.g. Ahero only ~20% above the record maximum). Consider pooling ξ by region or constraining ξ ≥ 0; check the effect on the PML tail.
 - Seasonal model: fit MAM and OND separately if dependence differs.
 - Excluded: Ewaso Ng'iro (North) below the Lorian Swamp: transmission-loss reach where GloFAS flow does not grow with upstream area; unreliable for flood statistics; low exposure (`sites.excluded_sites`).
 - Lower Athi/Galana: GloFAS dry-season zeros on a perennial river; check against WRA gauge data (Baricho).

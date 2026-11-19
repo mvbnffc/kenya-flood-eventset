@@ -49,7 +49,6 @@ library(arrow)
 library(yaml)
 
 cfg <- read_yaml("config.yaml")
-set.seed(cfg$simulation$seed)
 f <- cfg$files
 sim <- cfg$simulation
 if (packageVersion("texmex") != "2.4.9") stop("texmex ", packageVersion("texmex"), " installed; 05 is written for 2.4.9")
@@ -123,6 +122,7 @@ for (k in seq_len(nrow(required))) {
 # Annual counts, resampled from the historical record years.
 years <- cfg$glofas$start_year:cfg$glofas$end_year
 annual <- as.vector(table(factor(as.integer(format(events$start, "%Y", tz = "UTC")), levels = years)))
+set.seed(cfg$simulation$seed)  # here, not at the top: mexRangeFit's bootstrap uses the RNG
 counts <- sample(annual, sim$n_years, replace = TRUE)
 cat("\nlambda =", nrow(events), "events /", length(years), "years =", round(nrow(events) / length(years), 2),
     "; historical annual counts", min(annual), "to", max(annual), "; simulated events", sum(counts), "\n")
