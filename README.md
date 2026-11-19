@@ -18,12 +18,14 @@ python scripts/01_download.py
 python scripts/02_sites.py
 python scripts/03_extract.py
 python scripts/04_events.py
-Rscript scripts/05_simulate.R
+Rscript scripts/05a_fit.R
+Rscript scripts/05b_simulate_chunk.R <chunk_id>   # each chunk 1 to N; on the cluster, see cluster/README.md
+python scripts/05c_combine.py
 python scripts/06_event_rp.py
 python scripts/07_checks.py
 ```
 
-All parameters are in `config.yaml`. The default config runs the full site network (93 modelled sites) for 1,000 years; the small end-to-end runs r1–r4 used `max_sites: 80` (45 modelled sites).
+All parameters are in `config.yaml`. The default config runs the full site network (91 modelled sites) for 1,000 years; the small end-to-end runs r1–r4 used `max_sites: 80` (45 modelled sites).
 
 ## Data
 
@@ -51,6 +53,7 @@ Static maps: LISFLOOD static and parameter maps for GloFAS (Choulga et al. 2023,
 - Seasonal model: fit MAM and OND separately if dependence differs.
 - Within-year repeat flooding at the same sites is under-represented (check 7: 0.42 vs 0.57 historical); finer regions or a different labelling rule may help if annual losses show it matters.
 - Excluded: Ewaso Ng'iro (North) below the Lorian Swamp: transmission-loss reach where GloFAS flow does not grow with upstream area; unreliable for flood statistics; low exposure (`sites.excluded_sites`).
+- Excluded: Amboseli: GloFAS routes Kilimanjaro outflow into the endorheic basin as perennial surface flow (83 m³/s mean); the real swamps are mainly groundwater-fed. Artefact; low exposure (`sites.excluded_sites`).
 - Lower Athi/Galana: GloFAS dry-season zeros on a perennial river; check against WRA gauge data (Baricho).
 - Check 5 in 07 waits for GloFAS v5 return-period thresholds.
 - Event definition (Olcese et al. 2024): look for events with two separate hotspots in the viewer's random draws; they found these come from merging unrelated floods and fixed them with shorter windows. If present, try per-site event windows after the 9-day test.

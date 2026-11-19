@@ -7,3 +7,5 @@ figures/
 __pycache__/
 .Rhistory
 .RData
+cluster/logs/*
+!cluster/logs/.gitkeep

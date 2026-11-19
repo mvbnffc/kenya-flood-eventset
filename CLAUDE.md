@@ -10,7 +10,9 @@ Builds a stochastic river-flood event set for Kenya from GloFAS v5 daily dischar
 | 02_sites.py | upstream-area and flow-direction maps | sites table, site map |
 | 03_extract.py | raw files, sites | daily discharge (date × site), site QC table |
 | 04_events.py | discharge | events table, event peaks (event × site) |
-| 05_simulate.R | event peaks, events | texmex fit, diagnostics, margins table, historical and simulated probabilities |
+| 05a_fit.R | event peaks | margins and dependence tables, historical probabilities, hotspot diagnostics, chunk count |
+| 05b_simulate_chunk.R | event peaks (refits via 05_model.R) | one chunk of simulated probabilities (cluster) |
+| 05c_combine.py | chunks | simulated probabilities |
 | 06_event_rp.py | simulated probabilities, events | simulated events table, event–RP lookup table |
 | 07_checks.py | all outputs | check figures |
 
