@@ -6,8 +6,8 @@ Reads:  config.yaml (glofas.*, simulation.n_years, output.rp_floor, checks.*), f
         files.sim_probs (check 6 only), files.dependence_params, files.boundary;
         files.margins_params and files.rp_thresholds for check 5
 Writes: figures/check_1_marginals.png ... figures/check_6_event_profile.png
-        (no check 5 figure while files.rp_thresholds is null), and prints a summary
-        per check
+        (no check 5 figure while files.rp_thresholds is null; none for check 7), and prints
+        a summary per check
 
 This checks the delivered event_rp: simulated rp_years are read from files.event_rp
 (after 06's assembly and re-ranking), with their sim_year. Event-site pairs missing
@@ -45,6 +45,9 @@ Checks:
    06's remap, as mexMonteCarlo keeps only draws where the conditioning site is
    largest), a map of rp_years at all sites (hollow below output.rp_floor), and Heffernan-Tawn alpha and beta from the conditioning site to every
    other site against distance.
+7. Repeat flooding: site-years with RP >= checks.repeat_T in two or more events, as a
+   share of all site-years and of site-years with at least one, historical vs
+   simulated; plus the median and range across sites of the second share.
 """
 import json
 import os
@@ -241,4 +244,13 @@ ax2.set(xlabel=f"distance from site {cond} (km)", ylabel="Heffernan-Tawn paramet
         title=f"Dependence on site {cond}")
 ax2.legend(loc="lower left")
 fig.savefig(os.path.join(f["figures"], "check_6_event_profile.png"), dpi=150, bbox_inches="tight")
+
+# Check 7: repeat flooding within a year.
+T = ck["repeat_T"]
+print(f"\nCheck 7: site-years with RP >= {T} in two or more events")
+for label, d, index in (("historical", hist, years), ("simulated", sim, sim_years)):
+    n = d[d["rp_years"] >= T].groupby(["year", "site_id"]).size().unstack().reindex(index=index, columns=site_ids).fillna(0)
+    per_site = (n >= 2).sum() / (n >= 1).sum()
+    print(f"  {label}: {(n >= 2).values.mean():.3f} of all site-years, {(n >= 2).values.sum() / (n >= 1).values.sum():.3f} "
+          f"of site-years with at least one; per site {per_site.median():.2f} ({per_site.min():.2f}-{per_site.max():.2f})")
 print(f"\nwrote check figures to {f['figures']}")
