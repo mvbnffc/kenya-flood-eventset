@@ -1,16 +1,20 @@
 """
 04_events.py: identify historical flood events and each site's peak in each event.
 
-Reads:  config.yaml (events.*, qc.max_zero_share), files.discharge, files.site_qc, files.sites
+Reads:  config.yaml (events.*, qc.max_zero_share, qc.min_mean_flow_m3s), files.discharge,
+        files.site_qc, files.sites
 Writes: files.events (event_id, start, end, n_days, n_sites_triggered, season),
         files.event_peaks (rows = event_id, columns = site_id, value = peak discharge)
 
 Method:
-- Use only sites with daily zero_share <= qc.max_zero_share; print the others.
-- Trigger threshold per site: the daily quantile at which the site averages
-  events.trigger_clusters_per_year exceedance clusters per year (clusters separated
-  by at least events.merge_gap_days). Found by stepping down through the site's
-  distinct daily values from the top; the first that reaches the rate is used.
+- Use only sites with daily zero_share <= qc.max_zero_share and mean daily flow
+  >= qc.min_mean_flow_m3s; print the others. Stop if a required site is dropped.
+- Trigger threshold per site: the larger of (a) the daily value at which the site
+  averages events.trigger_clusters_per_year exceedance clusters per year (clusters
+  separated by at least events.merge_gap_days), found by stepping down through the
+  site's distinct daily values from the top, the first that reaches the rate; and
+  (b) the site's events.trigger_quantile_floor daily quantile. Where no value
+  reaches the rate, (b) is used. Print how many sites take (b).
 - A trigger day is any day when at least one site is at or above its trigger.
 - Merge runs of trigger days separated by fewer than events.merge_gap_days.
   Pad each run by events.pad_days on both sides and merge runs that then overlap.
@@ -52,24 +56,33 @@ def runs(above):
 
 dis = pd.read_parquet(f["discharge"])
 sites = pd.read_parquet(f["sites"]).merge(pd.read_parquet(f["site_qc"]), on="site_id")
-keep = sites["zero_share"] <= cfg["qc"]["max_zero_share"]
-print(f"{(~keep).sum()} of {len(sites)} sites excluded (zero_share > {cfg['qc']['max_zero_share']}):")
-print(sites[~keep][["site_id", "name", "lon", "lat", "upstream_area_km2", "zero_share"]].round(3).to_string(index=False))
-sites = sites[keep]
+cols = ["site_id", "name", "lon", "lat", "upstream_area_km2", "zero_share", "mean_flow_m3s"]
+dry = sites["zero_share"] > cfg["qc"]["max_zero_share"]
+low = ~dry & (sites["mean_flow_m3s"] < cfg["qc"]["min_mean_flow_m3s"])
+print(f"{dry.sum()} of {len(sites)} sites excluded (zero_share > {cfg['qc']['max_zero_share']}):")
+print(sites[dry][cols].round(3).to_string(index=False))
+print(f"\n{low.sum()} more excluded (mean flow < {cfg['qc']['min_mean_flow_m3s']} m3/s):")
+print(sites[low][cols].round(3).to_string(index=False))
+if (sites["name"][dry | low] != "").any():
+    raise ValueError(f"required sites excluded: {list(sites['name'][(dry | low) & (sites['name'] != '')])}")
+sites = sites[~(dry | low)]
 dis = dis[sites["site_id"].astype(str)]
 q = dis.values
 n_years = dis.index.year.nunique()
 
 # Trigger threshold per site.
 target = ev["trigger_clusters_per_year"] * n_years
-trigger = np.empty(q.shape[1])
+floor = np.quantile(q, ev["trigger_quantile_floor"], axis=0)
+trigger = floor.copy()
 for j in range(q.shape[1]):
     for u in np.unique(q[:, j])[::-1]:
+        if u <= floor[j]:
+            break
         if len(runs(q[:, j] >= u)[0]) >= target:
             trigger[j] = u
             break
-    else:
-        raise ValueError(f"site {dis.columns[j]} never reaches {ev['trigger_clusters_per_year']} clusters per year")
+print(f"\n{(trigger == floor).sum()} of {len(trigger)} sites use the trigger_quantile_floor "
+      f"({ev['trigger_quantile_floor']}) quantile")
 if (trigger <= 0).any():
     raise ValueError(f"zero trigger at sites {list(dis.columns[trigger <= 0])}")
 quantile = (q < trigger).mean(axis=0)

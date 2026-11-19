@@ -12,7 +12,7 @@ Method:
   previous day's date (1980-01-02 00:00 -> 1980-01-01). Fail unless the dates run
   daily without gaps from glofas.start_year-01-01 to glofas.end_year-12-31.
 - Site QC columns: site_id, n_missing, n_negative, zero_share (share of days with
-  discharge < qc.zero_discharge_m3s), annual_max_trend (Spearman correlation of
+  discharge < qc.zero_discharge_m3s), mean_flow_m3s (mean daily discharge), annual_max_trend (Spearman correlation of
   calendar-year maximum with year) and annual_max_trend_p.
 - Print the sites with missing or negative values, or a trend with p < qc.trend_p.
 """
@@ -68,6 +68,7 @@ site_qc = pd.DataFrame({
     "n_missing": dis.isna().sum().values,
     "n_negative": (dis < 0).sum().values,
     "zero_share": (dis < qc["zero_discharge_m3s"]).mean().values,
+    "mean_flow_m3s": dis.mean().values,
     "annual_max_trend": [t.statistic for t in trend],
     "annual_max_trend_p": [t.pvalue for t in trend],
 })
@@ -86,5 +87,6 @@ for label, flagged in flags.items():
     if flagged.any():
         print(report[flagged].round(3).to_string(index=False))
 
-print(f"\nzero_share (days < {qc['zero_discharge_m3s']} m3/s) at the required sites:")
-print(report[report["name"] != ""][["site_id", "name", "upstream_area_km2", "zero_share"]].to_string(index=False))
+print(f"\nzero_share (days < {qc['zero_discharge_m3s']} m3/s) and mean flow at the required sites:")
+print(report[report["name"] != ""][["site_id", "name", "upstream_area_km2", "zero_share", "mean_flow_m3s"]]
+      .round(3).to_string(index=False))
