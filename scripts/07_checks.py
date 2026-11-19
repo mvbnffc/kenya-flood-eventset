@@ -1,14 +1,18 @@
 """
 07_checks.py: check the simulated event set against the historical record.
 
-Reads:  config.yaml (glofas.*, simulation.n_years, checks.*), files.sites, files.hist_probs,
-        files.sim_probs, files.events, files.events_sim, files.dependence_params,
-        files.boundary; files.margins_params and files.rp_thresholds for check 5
+Reads:  config.yaml (glofas.*, simulation.n_years, output.rp_floor, checks.*), files.sites,
+        files.hist_probs, files.event_rp, files.events, files.events_sim,
+        files.sim_probs (check 6 only), files.dependence_params, files.boundary;
+        files.margins_params and files.rp_thresholds for check 5
 Writes: figures/check_1_marginals.png ... figures/check_6_event_profile.png
         (no check 5 figure while files.rp_thresholds is null), and prints a summary
         per check
 
-RP at every site and event, historical and simulated, uses 06's formula:
+This checks the delivered event_rp: simulated rp_years are read from files.event_rp
+(after 06's rank remap), with sim_year from files.events_sim. Event-site pairs missing
+from event_rp are below output.rp_floor and count as rp_years 0, below every T; stop
+if any T in checks.* is below output.rp_floor. Historical RP uses 06's formula:
 rp_years = 1 / (1 - exp(-lambda * (1 - p_event))), lambda = historical events per record year.
 
 Checks:
@@ -35,9 +39,9 @@ Checks:
    differences where site_qc shows a trend. Skipped while files.rp_thresholds is
    null; stops if it is set, as the check is not written yet.
 6. Event profile: for simulated event checks.profile_event (must be a model event),
-   the conditioning site (the site with the highest p_event, as mexMonteCarlo keeps
-   only draws where the conditioning site is largest), a map of rp_years at all
-   sites, and Heffernan-Tawn alpha and beta from the conditioning site to every
+   the conditioning site (the site with the highest p_event in sim_probs, before
+   06's remap, as mexMonteCarlo keeps only draws where the conditioning site is
+   largest), a map of rp_years at all sites (hollow below output.rp_floor), and Heffernan-Tawn alpha and beta from the conditioning site to every
    other site against distance.
 """
 import json
@@ -60,8 +64,8 @@ HIST, SIM = "#404040", "#2a78b5"
 
 
 def annual_max(df, index):
-    """Annual maximum rp_years (year x site); years with no events get 0."""
-    return df.groupby(["year", "site_id"])["rp_years"].max().unstack().reindex(index=index, fill_value=0)[site_ids]
+    """Annual maximum rp_years (year x site); years with no events, and site-years below rp_floor, get 0."""
+    return df.groupby(["year", "site_id"])["rp_years"].max().unstack().reindex(index=index, fill_value=0)[site_ids].fillna(0)
 
 
 def wide(df):
@@ -85,15 +89,19 @@ lam = len(events) / len(years)
 n_hist = events["start"].dt.year.value_counts().reindex(years, fill_value=0).values
 hist = pd.read_parquet(f["hist_probs"]).merge(events[["event_id", "start"]], on="event_id")
 hist["year"] = hist.pop("start").dt.year
-sim = pd.read_parquet(f["sim_probs"]).rename(columns={"sim_year": "year"})
-for df in (hist, sim):
-    df["rp_years"] = 1 / (1 - np.exp(-lam * (1 - df["p_event"])))
+hist["rp_years"] = 1 / (1 - np.exp(-lam * (1 - hist["p_event"])))
+check_T = ck["marginal_T"] + ck["ratio_T"] + ck["cor_T"] + ck["extent_T"]
+if min(check_T) < cfg["output"]["rp_floor"]:
+    raise ValueError(f"check T = {min(check_T)} is below output.rp_floor = {cfg['output']['rp_floor']}")
+events_sim = pd.read_parquet(f["events_sim"])
+sim = pd.read_parquet(f["event_rp"]).merge(events_sim[["event_id", "sim_year"]], on="event_id")
+sim = sim.rename(columns={"sim_year": "year"})
 site_ids = np.sort(sim["site_id"].unique())
 if not np.array_equal(np.sort(hist["site_id"].unique()), site_ids):
-    raise ValueError("hist_probs and sim_probs have different sites")
+    raise ValueError("hist_probs and event_rp have different sites")
 sites = pd.read_parquet(f["sites"]).set_index("site_id").loc[site_ids]
 amax_h, amax_s = annual_max(hist, years), annual_max(sim, sim_years)
-ev_h, ev_s = wide(hist), wide(sim)
+ev_h, ev_s = wide(hist), wide(sim).reindex(events_sim["event_id"]).fillna(0)
 os.makedirs(f["figures"], exist_ok=True)
 pd.set_option("display.width", 200)
 print(f"lambda = {lam:.3f}; {len(site_ids)} sites; {len(ev_h)} historical events in {len(years)} years, "
@@ -191,11 +199,12 @@ print("\nCheck 5 skipped: files.rp_thresholds is null")
 
 # Check 6: profile of one simulated event.
 e = ck["profile_event"]
-info = pd.read_parquet(f["events_sim"]).set_index("event_id").loc[e]
+info = events_sim.set_index("event_id").loc[e]
 if info["source"] != "model":
     raise ValueError(f"event {e} is {info['source']}, so it has no conditioning site")
 r = ev_s.loc[e]
-cond = r.idxmax()
+raw = pd.read_parquet(f["sim_probs"])
+cond = raw.loc[raw["event_id"] == e].set_index("site_id")["p_event"].idxmax()
 dep = pd.read_parquet(f["dependence_params"])
 dep = dep[dep["cond_site"] == cond].set_index("site_id").reindex(site_ids[site_ids != cond])
 if dep["a"].isna().any():

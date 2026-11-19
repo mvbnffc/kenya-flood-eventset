@@ -33,6 +33,8 @@ All parameters are in `config.yaml`. The default config runs the small end-to-en
 
 Conditional extremes model of Heffernan and Tawn (2004, JRSS B), fitted with texmex. The event-set approach follows Keef, Tawn and Lamb (2013, Environmetrics) and Quinn et al. (2019, WRR, doi:10.1029/2018WR024205). Using modelled discharge rather than gauges follows Wing et al. (2020, WRR, doi:10.1029/2020WR027692) and Olcese et al. (2022, WRR, doi:10.1029/2022WR032743).
 
+Simulated margins are remapped to ranks in 06 (p = rank / (N + 1) per site over all N simulated events), because Heffernan–Tawn simulation over-predicts exceedances at non-conditioning sites (r1 diagnostic: +27% per event at T = 2, +51% at T = 10). The fitted dependence is kept; the largest per-site return period is bounded by roughly the simulation length, which is intended, as the Fathom maps cap return periods well below that for n_years = 10,000. 07 checks the delivered event_rp.
+
 Differences from Quinn et al. (2019): dependence is fitted on event peaks (maximum in each event window), not on lagged 3-day-maximum series in a fixed 9-day window; there are no spatial limits (one national model, which fits inside the 1,500 km radius Olcese et al. used for Southern Africa).
 
 Static maps: LISFLOOD static and parameter maps for GloFAS (Choulga et al. 2023, JRC, CC BY 4.0). Kenya boundary: geoBoundaries ADM0 (CC BY 4.0).
