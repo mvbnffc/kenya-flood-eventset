@@ -9,3 +9,4 @@ __pycache__/
 .RData
 cluster/logs/*
 !cluster/logs/.gitkeep
+*.md
