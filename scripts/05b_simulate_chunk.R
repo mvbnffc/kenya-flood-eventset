@@ -37,7 +37,7 @@ mc <- mexMonteCarlo(n, fit, mult = sim$mult)
 secs <- as.numeric(Sys.time() - t0, units = "secs")
 if (any(!complete.cases(mc$MCsample))) stop(sum(!complete.cases(mc$MCsample)), " NA rows in MCsample; raise simulation.mult")
 
-ids <- (id - 1) * sim$chunk_events + seq_len(n)
+ids <- as.integer((id - 1) * sim$chunk_events + seq_len(n))
 out <- long(to_p(mc$MCsample, paste("chunk", id)), ids)
 out$source <- rep(ifelse(mc$whichMaxAboveThresh, "model", "resampled"), times = d)
 dir.create(f$chunks, showWarnings = FALSE, recursive = TRUE)

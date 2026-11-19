@@ -10,7 +10,8 @@ Method:
   lambda = rows of event_peaks / record years; n_chunks = ceil(n_pool / chunk_events).
 - Stop if any of chunk_0001 ... chunk_<n_chunks> is missing or other chunk files are
   present, if any p_event is NA or outside (0, 1), if the event_ids are not exactly
-  1 ... n_pool, or if any event lacks a site.
+  1 ... n_pool, or if any event lacks a site. event_id is stored as int64 (stop if any
+  value is not a whole number).
 """
 import glob
 import os
@@ -33,6 +34,9 @@ if expected - found:
 if found - expected:
     raise ValueError(f"unexpected chunk files: {sorted(found - expected)[:5]}")
 sim = pd.concat([pd.read_parquet(p) for p in sorted(expected)], ignore_index=True)
+if (sim["event_id"] % 1 != 0).any():
+    raise ValueError("non-integer event_id")
+sim["event_id"] = sim["event_id"].astype("int64")  # chunks written before 05b cast to integer hold doubles
 if sim["p_event"].isna().any():
     raise ValueError(f"{sim['p_event'].isna().sum()} NA p_event values")
 if not sim["p_event"].between(0, 1, inclusive="neither").all():
