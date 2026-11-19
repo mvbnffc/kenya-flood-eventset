@@ -45,6 +45,7 @@ Static maps: LISFLOOD static and parameter maps for GloFAS (Choulga et al. 2023,
 - Margin and dependence thresholds (0.8 / 0.8): check threshold-stability plots in 05.
 - GPD shape: ξ < 0 at 22/50 sites gives hard upper limits (e.g. Ahero and site 76 only ~20% above the record maximum). Consider pooling ξ by region or constraining ξ ≥ 0; check the effect on the PML tail.
 - Seasonal model: fit MAM and OND separately if dependence differs.
+- Excluded: Ewaso Ng'iro (North) below the Lorian Swamp: transmission-loss reach where GloFAS flow does not grow with upstream area; unreliable for flood statistics; low exposure (`sites.excluded_sites`).
 - Lower Athi/Galana: GloFAS dry-season zeros on a perennial river; check against WRA gauge data (Baricho).
 - Check 5 in 07 waits for GloFAS v5 return-period thresholds.
 - Fathom step: zones from HydroBASINS level 8 (level 10 where several sites share a unit), each taking its nearest site by distance and upstream area (Quinn et al. 2019).

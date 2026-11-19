@@ -12,10 +12,14 @@
 # Method:
 # - Drop sites whose share of zero event peaks exceeds margins.max_zero_share
 #   (ties at zero break the transform); print which sites were dropped.
-# - mexAll(data, mqu = margins.threshold_quantile, dqu = rep(dependence.threshold_quantile, d)).
-#   mexAll only takes data, mqu and dqu, so it uses mex() defaults: Laplace margins
-#   and constrain = TRUE (checked in texmex 2.4.9). Print xi and, where xi < 0, the
-#   GPD upper limit at each site.
+# - mex(data, which = i, mqu = margins.threshold_quantile, dqu = dependence.threshold_quantile,
+#   priorParameters) for each site i, as mexAll does but with the GPD prior (mexAll does
+#   not pass it); other mex() defaults: Laplace margins, constrain = TRUE. The prior is
+#   Gaussian on (phi = log sigma, xi), centred on 0, with effective sds
+#   margins.phi_prior_sd and margins.xi_prior_sd. texmex 2.4.9 adds
+#   (par - centre)' cov^-1 (par - centre) to -log L, without the 1/2 of a Gaussian
+#   log-density, so cov = diag(2 * sd^2). Print xi and, where xi < 0, the GPD upper
+#   limit at each site.
 # - Diagnostics for the required sites as conditioning sites: plot() of the mex fit,
 #   gpdRangeFit (thresholds between the margins.range_quantiles quantiles; texmex's
 #   default 0.05-0.95 range fails at Budalangi) and mexRangeFit, saved as PNGs.
@@ -64,8 +68,14 @@ zero_share <- zero_share[!drop]
 d <- ncol(data)
 
 t0 <- Sys.time()
-fit <- mexAll(data, mqu = cfg$margins$threshold_quantile, dqu = rep(cfg$dependence$threshold_quantile, d))
-cat("mexAll on", d, "sites and", nrow(data), "events:", format(Sys.time() - t0, digits = 3), "\n")
+prior <- list(c(0, 0), diag(2 * c(cfg$margins$phi_prior_sd, cfg$margins$xi_prior_sd)^2))
+prior <- setNames(rep(list(prior), d), names(data))
+fit <- lapply(seq_len(d), function(i) mex(data, which = i, mqu = cfg$margins$threshold_quantile,
+                                          dqu = cfg$dependence$threshold_quantile, priorParameters = prior))
+names(fit) <- names(data)
+oldClass(fit) <- "mexList"
+cat("mex on", d, "sites and", nrow(data), "events, xi prior effective sd", cfg$margins$xi_prior_sd, ":",
+    format(Sys.time() - t0, digits = 3), "\n")
 dir.create(dirname(f$mex_fit), showWarnings = FALSE, recursive = TRUE)
 saveRDS(fit, f$mex_fit)
 dep <- do.call(rbind, lapply(fit, function(x) {

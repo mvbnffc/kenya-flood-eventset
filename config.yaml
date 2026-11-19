@@ -19,12 +19,17 @@ sites:
   - [garsen_tana, 40.12, -2.27]              # [name, lon, lat] for hotspots, e.g. lower Nzoia
   excluded_sites:                 # [name, lon, lat]; sites near these points are dropped
   - [omo_delta, 35.925, 4.475]    # flow almost all from Ethiopia, dam-regulated there
+  # Ewaso Ng'iro (North) below the Lorian Swamp: transmission-loss reach where GloFAS flow does
+  # not grow with upstream area; unreliable for flood statistics; low exposure. (v0 sites 7, 6, 4)
+  - [ewaso_below_lorian_1, 40.275, 0.225]
+  - [ewaso_below_lorian_2, 40.425, 0.175]
+  - [ewaso_below_lorian_3, 40.975, 0.475]
   excluded_radius_cells: 2
 
 qc:
   zero_discharge_m3s: 0.01        # discharge below this counts as a zero day
   trend_p: 0.05                   # print sites whose annual-maximum trend has p below this
-  max_zero_share: 0.5             # 04 uses only sites with daily zero_share at or below this
+  max_zero_share: 0.4             # 04 uses only sites with daily zero_share at or below this; 0.5 in v0
 
 events:
   trigger_clusters_per_year: 1.0  # start; sets each site's trigger quantile
@@ -32,10 +37,10 @@ events:
   pad_days: 3                     # set from lag check, 2026-11-18
   split_above_days: 30            # start; longer windows are split at valleys if any exist, otherwise kept
   lag_check_pairs:                # [upstream_site_id, downstream_site_id], checked on the LDD
-  - [28, 13]                      # Tana: Garissa -> Hola
-  - [13, 3]                       # Tana: Hola -> Garsen
-  - [47, 24]                      # Athi/Galana
-  - [66, 63]                      # Nzoia -> Budalangi
+  - [25, 10]                      # Tana: Garissa -> Hola (v0 ids 28, 13)
+  - [10, 3]                       # Tana: Hola -> Garsen (v0 ids 13, 3)
+  - [44, 21]                      # Athi/Galana (v0 ids 47, 24)
+  - [63, 60]                      # Nzoia -> Budalangi (v0 ids 66, 63)
   check_periods:                  # [label, first day, last day]; events overlapping these are printed
   - [OND_1997, 1997-10-01, 1997-12-31]
   - [MAM_1998, 1998-03-01, 1998-05-31]
@@ -43,15 +48,20 @@ events:
   - [AM_2020, 2020-04-01, 2020-05-31]
   - [OND_2023, 2023-10-01, 2023-12-31]
   - [MAM_2024, 2024-03-01, 2024-05-31]
-  check_sites: [24, 47]           # printed with the required sites for check_periods (Athi)
+  check_sites: [21, 44]           # printed with the required sites for check_periods (Athi; v0 ids 24, 47)
 
 margins:
   threshold_quantile: 0.8         # texmex mqu (start)
   max_zero_share: 0.5             # drop sites with more zero event peaks than this
   range_quantiles: [0.5, 0.9]     # threshold range for gpdRangeFit diagnostics only; not used in the fit
+  # Gaussian prior on the GPD (phi = log sigma, xi), centred on 0, as effective sds. texmex's penalty
+  # has no 1/2, so 05 passes variance 2 * sd^2. v0 used the texmex default, variance (100^2, 0.25):
+  # effective sds 70.7 and 0.354.
+  phi_prior_sd: 100               # effectively flat
+  xi_prior_sd: 0.2                # start
 
 dependence:
-  threshold_quantile: 0.8         # texmex dqu (start); mexAll uses mex() defaults: Laplace margins, constrain = TRUE
+  threshold_quantile: 0.8         # texmex dqu (start); mex() defaults otherwise: Laplace margins, constrain = TRUE
 
 simulation:
   n_years: 1000                   # 10000 for v1
@@ -69,7 +79,7 @@ checks:
   cor_min: 0.05                   # check 2: CORE also over pairs with simulated COR above this
   extent_T: [2, 5, 10]            # checks 3 and 4
   big_years: [1997, 1998, 2019, 2020, 2023, 2024]  # check 4, calendar years
-  profile_event: 2884             # check 6; simulated event_id, changes with simulation.seed
+  profile_event: 1896             # check 6; widest simulated event (most sites RP >= 10, ties by summed RP); v0: 2884
 
 files:
   raw_discharge: data/raw/glofas_v5_{year}.nc
